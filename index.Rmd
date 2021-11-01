@@ -19,72 +19,129 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 ## Data Wrangling, Exploration, Visualization
 
-### Name and EID here
+### Andie Brown, ajb5656
 
 #### Introduction 
 
-Paragraph or two introducing your datasets and variables, why they are interesting to you, etc.
+In this project, I will be exploring the two datasets: “hate_crimes” and “States” (Education and Related Statistics for the U.S. States). The hate_crimes dataset was acquired from installing the package ‘fivethiryeight’ and the states dataset was acquired from the carData installed in the R server. The hate_crimes dataset contains the variables: state_abbrev, state, median_house_inc, share_unemp_seas, share_pop_metro, share_pop_hs, share_non_citizen, share_white_poverty, gini_index, share_non_white, share_vote_trump, hate_crimes_per_100k_splc, and avg_hatecrimes_per_100k_fbi. The States dataset contains the variables: state_abbrev, region, pop, SATV, SATM, percent, dollars, and pay. These datasets are interesting because I want to explore if there is a relationship between the amount of hate crimes in a state compared to the education level of that state and the median house-hold income of the state. A potential association I expect to see is that there will be a higher rate of hate crimes in states that  higher test scores. Specifically, the higher the hate_crimes_per_100k_splc, and avg_hatecrimes_per_100k_fbi for a state, the lower the SATV and SATM values. 
 
 ```{R}
 # read your datasets in here, e.g., with read_csv()
+library(fivethirtyeight)
+library(tidyverse)
+data1<-hate_crimes
+head(data1)
+data2<-carData::States
+head(data2)
+data2<-rownames_to_column(data2, var="state_abbrev")
+head(data2)
 
 ```
-
+For data2, the original dataset had an unnamed first column, so I used the function rownames_to_column so that the first column was named to state_abbrev and could be used to join to first data set. 
 #### Tidying: Reshaping
 
 If your datasets are tidy already, demonstrate that you can reshape data with pivot wider/longer here (e.g., untidy and then retidy). Alternatively, it may be easier to wait until the wrangling section so you can reshape your summary statistics. Note here if you are going to do this.
 
 ```{R}
 # your tidying code (if applicable; can also wait until wrangling section)
+data1%>%pivot_longer(12:13, names_to="hatecrime source", values_to="rate")->data3
+head(data3)
+data3%>%pivot_wider(names_from = "hatecrime source", values_from="rate")
 ```
-
+The datasets were tidy already, thus data1 was subject to untidy and then retidy. To untidy data1, pivot_longer was used to combine hate_crimes_per_100k_splc and avg_hatecrimes_per_100k_fbi so that a new variable would be created called hatecrime source which would specify which hate crime data it was coming from (either the hate_crimes_per_100k_splc and avg_hatecrimes_per_100k_fbi) and another variable called rate which would give the numerical value of the rates of the hatecrimes. The data1 was then retidied using pivot_wider to separate the hatecrime source variable back into two separate variables. 
     
 #### Joining/Merging
 
 ```{R}
 # your joining code
+nrow(data1)
+data1 %>% summarize(n(), n_distinct(state_abbrev))
+nrow(data2)
+data2%>%summarize(n(), n_distinct(state_abbrev))
+statejoin<-inner_join(data1,data2, by="state_abbrev")
+glimpse(statejoin)
+
 
 # your joining code
+anti_join(data1,data2, by="state_abbrev")%>%count(state_abbrev)
+anti_join(data2,data1, by="state_abbrev")%>%count(state_abbrev)
 ```
 
-Discussions of joining here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+Data1 and Data2 were joined by the common ID variable ‘state_abbrev’ so that the two datasets would be joined by states. In the original data1 set, there were 51 observations representing the 50 states as well as DC, and it has 12 unique ID variables that only appeared in this data set and not in data2: state, median_house_inc, share_unemp_seas, share_pop_metro, share_pop_hs, share_non_citizen, share_white_poverty, gini_index, share_non_white, share_vote_trump, hate_crimes_per_100k_splc, and avg_hatecrimes_per_100k_fbi. In the original data2 set, there were 51 observations representing thje 50 states as well as DC, and it had 7 unique variables that appeared only in this data set and not data1: region, pop, SATV, SATM, percent, dollars, and pay.The only variable the two data sets had in common was the state_abbrev. I conducted an anti-join to determine if there were any observations within the common ID variable ‘state_abbrev’ that appeared in one and not the other. The observation CT appeared in data1 and was not in data2, and the observation CN appeared in data2 and was not in data1. Thus, I conducted an inner join so that only the observations that matched in both data sets would appear in the join dataset and observations that did not match would be dropped. Thus, the join data set ‘statejoin’ has 50 observations representing 49 states and DC, and it has a total of 20 variables. Therefore, each dataset lost 1 observation after doing the join. This observation represents CT in data1 and CN in data2. A potential problem with this join is that data will not be collected for the state of Conneticut. Additionally, compared to the original data sets, the statejoin dataset has much more variables than either one and thus more detailed information about the different states can be determined. 
 
 ####  Wrangling
 
 ```{R}
 # your wrangling code
+head(statejoin)
+statejoin<-statejoin%>%mutate(SATtotal=SATV+SATM)
+head(statejoin)
 
 # your wrangling code
+statejoin%>%filter(SATtotal==max(SATtotal))
 
 # your wrangling code
+statejoin%>%arrange(avg_hatecrimes_per_100k_fbi)
+
+#your wrangling code
+statejoin%>%select(state_abbrev,SATtotal,avg_hatecrimes_per_100k_fbi)%>%arrange(desc(avg_hatecrimes_per_100k_fbi))
+statejoin%>%select(state_abbrev,SATtotal,avg_hatecrimes_per_100k_fbi)%>% arrange(desc(SATtotal))
+statejoin%>%select(state_abbrev,median_house_inc,avg_hatecrimes_per_100k_fbi)%>%arrange(desc(median_house_inc))
+
+
 ```
+In the first part of using wrangling functions, mutate was used in order to create a new variable, SATtotal, that combined the variables SATM and SATV so that the total SAT score could be used in comparison with other aspects of the states, such as its median household income and its average hatecrime per 100K as measured by the FBI. From using the select function, the median household income was arranged in descending order and then compared to that state's average hatecrimes per 100K as measured by the FBI. Unfortunately, there was no clear trend between the two variables as the state of MD had the highest median_house_inc and one of the lowest avg_hatecrimes_per_100k_fbi, but DC also had one of the highest median_house_inc yet had the highest avg_hatecrimes_per_100k_fbi of 10.9534797. However, when the select function was used to compare the SATtotal with the avg_hatecrimes_per_100k_fbi, the states with higher SATtotals such as IA, WI, and NM had among the lowest avg_hatecrimes_per_100k_fbi; this trend was also with lowest SATtotals having higher avg_hatecrimes_per_100k_fbi. Specifically, Iowa had the highest SATtotal of 1088 with the lowest avg_hatecrimes_per_100k_fb of 0.5613956, and DC had the lowest SATtotal of 850 and the highest avg_hatecrimes_per_100k_fb of 10.9534797. This suggests a trend that states with higher SAT scores have lowest rates of hate crimes. 
+```{R}
 
-Your discussion of wrangling section here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+#your wrangling code
+statejoin%>%group_by(region)%>%summarize(meanhouse_inc=mean(median_house_inc, na.rm = T))%>%arrange(desc(meanhouse_inc))
+statejoin%>%summarize(max(hate_crimes_per_100k_splc, na.rm = T), min(hate_crimes_per_100k_splc, na.rm = T), sd(hate_crimes_per_100k_splc, na.rm = T), median(hate_crimes_per_100k_splc, na.rm=T))
+statejoin%>%summarize(max(avg_hatecrimes_per_100k_fbi, na.rm = T), min(avg_hatecrimes_per_100k_fbi, na.rm = T), sd(avg_hatecrimes_per_100k_fbi, na.rm = T), median(avg_hatecrimes_per_100k_fbi, na.rm = T))
+statejoin%>%group_by(region)%>%summarize(max(avg_hatecrimes_per_100k_fbi, na.rm=T), n=n())
+statejoin%>%summarize(median(pop))
+statejoin%>%summarize(sd(SATV), max(SATV), min(SATV),median(SATV))
+statejoin%>%summarize(sd(SATM), max(SATM), min(SATM), median(SATM))
+statejoin%>%group_by(region)%>%summarize(mean(SATtotal), n=n())
+statejoin%>%group_by(region)%>%summarize(mean(avg_hatecrimes_per_100k_fbi), n=n())
+statejoin%>%group_by(region)%>%summarize(mean(share_pop_metro), n=n())
+statejoin%>%summarize(median(share_pop_hs), mean(share_pop_hs), max(share_pop_hs), min(share_pop_hs))
 
+```
+Different summarize functions were used in order to further analyze the data. From the previous data collected during the first part of the wrangling functions (using select, filter, etc), it was hard to discern a clear pattern between the amount of hate crimes and education attainment, so this part of the wrangling functions made comparisons by using data based on U.S. regions rather than looking at the individual states. The most interesting results of this were that the regions with the highest mean SATtotal score were WNC, ESC, and MTN and these were the regions with the lowest maximum of average hate crimes per 100K as measured by the FBI; and the regions with the lowest mean SATtotal score were SA, NE,and MA, which had the highest maximum of average hate crimes per 100K as measured by the FBI. A very intersting finding was that the SA region had the lowest mean SATtotal at 876.8889 and the highest maximum of average hate crimes at 10.953480, which was way higher than any other region as the closest region has a maximum of 4.801899. Another interesting find was that the regions with higher mean share_pop_metro, meaning higher average metropolitan populations, were the regions with lowest SATtotal scores and higher average hate crimes per 100K. This data shows the trend of cities being areas of higher crime rates and lower educational levels. Another interesting trend was that the regions of ENC and WSC had some of the lowest average median household incomes and had the two lowest mean of average hate crimes per 100K as measured by the FBI. This was an interesting trend to find, because I had originally hypothesized that areas with higher meadian household incomes would have lower rates of hate crimes. 
+```{R}
+# your wrangling code
+library(knitr)
+new_table<-statejoin%>%group_by(region)%>%summarize(mean_avg_hate=mean(avg_hatecrimes_per_100k_fbi, na.rm = T), n())%>%arrange(mean_avg_hate)
+new_table%>%kable()
 
+```
+By using the kable function, a table of the mean average hate crimes per 100K measured by the FBI for each region was created. By looking at the table, overall the regions have similar rates of hate crimes per 100K, with the PAC region being the highest. The WSC region has the lowest mean of average hate crimes with a mean of 1.011205. 
 #### Visualizing
 
 ```{R}
 # your plot 1
+statejoin%>%ggplot(aes(SATtotal,hate_crimes_per_100k_splc))+geom_point(aes(color=region, size=pop))+geom_smooth(method="lm", scale=4)+ggtitle("Hate Crimes vs. SAT Score per U.S. Regions")+xlab("Total SAT Score")+ylab("Hate Crimes per 100K splc")+theme_minimal()+xlim(800,1100)
 ```
 
-Your discussion of plot 1
+This graph plots the the amount of hate crimes per 100k as measured by the SPLC against against the total SAT score for different U.S. regions. The line on the plot shows a slight decrease in the amount of hate crimes for a region as that region's total SAT score increases, suggesting a weak inverse relationship between the two variables. Additionally, on the graph the region SA has the highest hate crime rate at 1.5 per 100K and has the four lowest SAT scores of all the regions. 
 
 ```{R}
 # your plot 2
+statejoin%>%ggplot(aes(region,share_pop_metro, fill=region))+ geom_bar(stat="summary")+geom_errorbar(stat="summary",fun.data=mean_se,width=.5)+ theme(legend.position = "none")+ ggtitle("Proportion of Metro-Population in U.S. Regions")+xlab("U.S. Regions")+ylab("Share of Population that is Metro")
 ```
 
-Your discussion of plot 2
+In this barplot, the proportion of the population that is living in metropolitan areas is plotted against U.S. regions, showing the regions that have the greatest populations living in metropolitan areas. From this barplot, The U.S. regions of SA, PAC, ENC, and MA have the largest metropolitan populations. From data collected earlier, these four regions were the ones with the lowest SAT total scores and with the highest average crime rates per 100K as measured by the FBI. This shows the real life scenarios that cities (large metropolitan areas) have higher rates of crime and have lower education attainments.  
 
 ```{R}
 # your plot 3
+statejoin%>%ggplot(aes(x=avg_hatecrimes_per_100k_fbi))+geom_histogram(aes(y= ..density.., ), bins=15,color="black",fill="purple")+geom_density(color="blue")+ggtitle("Rate of Hate Crimes Histogram")+xlab("Average Hatecrimes per 100k from the FBI")+ theme_bw()+scale_x_continuous(breaks=seq(0,10,1))
 ```
 
-Your discussion of plot 3
+This histogram shows the frequnecy of the average hate crimes per 100k as measured by the FBI. As one can see, most U.S. states commit an average of 200,00 hate crimes, with a large proportion of other states committing an average of 100,000 or 300,000 hate crimes. This histogram also shows that there is an extreme on the high end of a little more than 1,000,000 hate crimes committed.
 
 #### Concluding Remarks
 
-If any!
+It was a challenging project but I loved being able to have an assignment that has combined everything we have learned since the beginning of the year! 
 
 
 
